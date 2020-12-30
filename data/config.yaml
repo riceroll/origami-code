@@ -1,0 +1,40 @@
+default:
+  Setting:
+    STIFFNESS_CHANGE: true
+    paused: false
+    n_sub_steps: 20
+    t0_folding: 1000
+    T_folding: 8000
+    p_fold: 0.6
+    pinned: false
+
+    AUTO_FORCING: true
+    FORCE_GAP_SCALE: 30
+
+    SHOW_FORCE: false
+    SHOW_ENERGY: false
+    FORCE_LENGTH_SCALE: 20
+
+  Param:
+    EA: 100
+    k_fold: 1
+    k_facet: 10
+    k_face: 20000
+    damping: 0.1
+    h: 0.001
+
+triangle:
+  Setting:
+    t0_folding: 1500
+
+pasta_modified:
+  Setting:
+    STIFFNESS_CHANGE: false
+    AUTO_FORCING: false
+    p_fold: 0.1
+  Param:
+    h: 0.01
+
+
+
+

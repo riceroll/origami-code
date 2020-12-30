@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 import scipy.optimize
 
-name = 'pasta2'
+name = 'pasta_modified'
 
 n_quads = 15
 # look from +z, length of the strip is along x axis, width of quad is along x-axis
@@ -19,7 +19,6 @@ DISTORTED = True
 nodes = []
 edges = []
 faces = []
-
 
 x0 = 0
 y0 = 0

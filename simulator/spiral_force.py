@@ -8,13 +8,14 @@ import time
 import pdb
 
 
-class Force:
+class SpiralForce:
     def __init__(self):
         self.x_0 = None     # the initial x value of the handle at the beginning of force applying
         self.y_0 = None     # the initial y value of the handle at the beginning of force applying
         self.n_steps_0 = None       # the number of steps passed at the beginning of force applying
         self.h = None       # time step
         self.interval = None
+        self.gap = 0.02     # gap size
         self.on = False
 
     def start(self, x_0, y_0, n_steps_0, h, interval=0.02):
@@ -24,7 +25,7 @@ class Force:
         self.h = h
         self.interval = interval
         self.on = True
-    
+        
     def steps_interval(self):
         return int(self.interval // self.h)
 
@@ -34,9 +35,8 @@ class Force:
         
         vs = 0.01  # velocity along the trajectory
         w = np.pi * 2 / 10  # polar angular velocity
-        l = 0.02     # gap size
         T = np.pi * 2 / w
-        v = l / T   # polar radius velocity
+        v = self.gap / T   # polar radius velocity
         
         s = n_steps * vs
         t = np.sqrt(2 * s / v / w)

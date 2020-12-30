@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import json
 import time
 import pdb
-from sparse_simulator import forcer
+from simulator import spiral_force
 
 
 class Model(nn.Module):
@@ -55,6 +55,9 @@ class Model(nn.Module):
         # ax.plot_surface(x, y, z, color='b')
         
         ax.scatter(x, y, z)
+        ax.set_xlabe('X axis')
+        ax.set_ylabe('Y axis')
+        ax.set_zlabe('Z axis')
         
         plt.show()
         

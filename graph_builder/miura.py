@@ -4,7 +4,7 @@ from matplotlib.collections import LineCollection
 import scipy.optimize
 
 n_col = 10
-n_row = 1
+n_row = 10
 l = 1
 w = 1
 a = 30 / 180 * np.pi
@@ -29,7 +29,6 @@ def generate_Miura(n_col=n_col, n_row=n_row, l=l, w=w, a=a):
     edges = []
     k_edges = []
     
-
     i_handle = rc_2_i( int((n_row) / 2), int((n_col) / 2), n_row, n_col)
     
     is_boundary_nodes = []
@@ -83,15 +82,15 @@ def generate_Miura(n_col=n_col, n_row=n_row, l=l, w=w, a=a):
                 right_nodes.append(get_i(i_row, i_col+1))
             
             # # fix nodes
-            # if i_row == 0 or i_row == n_row or i_col == 0 or i_col == n_col:
-            #     is_boundary_nodes.append(1)
-            # else:
-            #     is_boundary_nodes.append(0)
-            #
-            if i_col == 0 or i_col == n_col:
+            if i_row == 0 or i_row == n_row or i_col == 0 or i_col == n_col:
                 is_boundary_nodes.append(1)
             else:
                 is_boundary_nodes.append(0)
+
+            # if i_col == 0 or i_col == n_col:
+            #     is_boundary_nodes.append(1)
+            # else:
+            #     is_boundary_nodes.append(0)
     
     def energy(nodes):
         nodes = nodes.reshape(-1, 2)
@@ -126,11 +125,12 @@ def generate_Miura(n_col=n_col, n_row=n_row, l=l, w=w, a=a):
             
             r_handle, c_handle = i_2_rc(i_handle, n_row, n_col)
             
+            # stiffness
             k = 1
-            if i_col < c_handle:
-                k = 0.5
-            if i_col > c_handle:
-                k = 1.5
+            # if i_col < c_handle - 1:
+            #     k = 0.5
+            # if i_col >= c_handle - 1:
+            #     k = 20
             
             if i_row == 0:
                 edges.append([i_0, i_1, 2])     # 2: boundary
@@ -161,7 +161,7 @@ def generate_Miura(n_col=n_col, n_row=n_row, l=l, w=w, a=a):
                     edges.append([i_1, i_3, 1])     # 1: positive crease
                 else:
                     edges.append([i_1, i_3, -1])    # -1: negative crease
-                    
+            
             if i_row == n_row - 1:
                 edges.append([i_2, i_3, 2])
             else:
@@ -169,6 +169,30 @@ def generate_Miura(n_col=n_col, n_row=n_row, l=l, w=w, a=a):
                     edges.append([i_2, i_3, 1])
                 else:
                     edges.append([i_2, i_3, -1])
+
+    # stiffness
+
+    theta = lambda x, y, x_0, y_0: np.arctan2((y - y_0), (x - x_0))
+    x_0, y_0 = nodes[i_handle]
+    for i_e, edge in enumerate(edges):
+        p1 = nodes[edge[0]]
+        p2 = nodes[edge[1]]
+        x, y = (p1 + p2) / 2
+        the = theta(x, y, x_0, y_0)
+        period = 45 / 180 * np.pi
+        # k = (the % period) / period * 10 + 1
+        
+        # k = abs((the % period) / period)
+        k = the / np.pi
+        #
+        # k = 1 if k < 0.5 else 20
+        
+        if 0 < k < 0.5 or k < - 0.5:
+            k = 1
+        else:
+            k = 20
+        
+        # k_edges[i_e] = k
 
     # edge properties
     for e in edges:
@@ -230,9 +254,9 @@ if __name__ == '__main__':
         for i, node in enumerate(nodes):
             ax.text(node[0], node[1], str(i))
         ax.plot([nodes[i_handle][0]], [nodes[i_handle][1]], 'o')
-    
+        
         plt.show()
-    
+        
     plot_2d(nodes_prev)
     plot_2d(nodes)
     
