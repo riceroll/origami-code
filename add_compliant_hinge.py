@@ -1,5 +1,6 @@
 import sys
 import pdb
+import json
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,6 +9,10 @@ from matplotlib.collections import LineCollection
 class Parameter:
     def __init__(self):
         self.hinge_width = 0.2
+        self.EA_facet = 100
+        self.EA_hinge = 10
+        self.k_hinge = 1
+        self.k_facet = 10
 
 class Focus:
     focus = None
@@ -20,6 +25,13 @@ class Focus:
     def at(obj):
         Focus.focus = obj
         Focus.type = type(obj)
+
+def reindex(cls):
+    old_all = cls.all[:]
+    cls.all = []
+    for item in old_all:
+        item.id = len(cls.all)
+        cls.all.append(item)
 
 class Node:
     all = []
@@ -35,7 +47,7 @@ class Node:
 class Edge:
     all = []
     
-    def __init__(self, k, is_facet, is_boundary, target_angle):
+    def __init__(self, k, is_facet, is_boundary, is_stretchable, target_angle, is_foldable, is_offset=False):
         self.halfedge = None
         self.id = len(Edge.all)
         Edge.all.append(self)
@@ -43,10 +55,14 @@ class Edge:
         self.k = k
         self.is_facet = is_facet
         self.is_boundary = is_boundary
-        self.is_foldable = False
-        if not is_facet and not is_boundary:
-            self.is_foldable = True
+        self.is_stretchable = is_stretchable
+        self.is_foldable = is_foldable
+        if self.is_foldable is None:
+            self.is_foldable = False
+            if not is_facet and not is_boundary:
+                self.is_foldable = True
         self.target_angle = target_angle
+        self.is_offset = is_offset  # if the edge is created with offsetting
     
     def remove(self):
         Edge.all.remove(self)
@@ -130,39 +146,38 @@ class Edge:
         f_rb = Face()
         f_rt = Face()
         
-        e_tl = Edge(h_top.edge.k, is_facet=False, is_boundary=True, target_angle=0)
+        e_tl = Edge(h_top.edge.k, is_facet=False, is_boundary=True, is_stretchable=True, is_foldable=True, target_angle=0)
         h_tl_out = Halfedge()
         h_tl_in = Halfedge()
-        e_left = Edge(h_top.edge.k, is_facet=False, is_boundary=True, target_angle=0)
+        e_left = Edge(h_top.edge.k, is_facet=False, is_boundary=True, is_stretchable=True, is_foldable=True, target_angle=0)
         h_left_out = Halfedge()
         h_left_in = Halfedge()
-        e_bl = Edge(h_top.edge.k, is_facet=False, is_boundary=True, target_angle=0)
+        e_bl = Edge(h_top.edge.k, is_facet=False, is_boundary=True, is_stretchable=True, is_foldable=True, target_angle=0)
         h_bl_out = Halfedge()
         h_bl_in = Halfedge()
-        e_br = Edge(h_top.edge.k, is_facet=False, is_boundary=True, target_angle=0)
+        e_br = Edge(h_top.edge.k, is_facet=False, is_boundary=True, is_stretchable=True, is_foldable=True, target_angle=0)
         h_br_out = Halfedge()
         h_br_in = Halfedge()
-        e_right = Edge(h_top.edge.k, is_facet=False, is_boundary=True, target_angle=0)
+        e_right = Edge(h_top.edge.k, is_facet=False, is_boundary=True, is_stretchable=True, is_foldable=True, target_angle=0)
         h_right_out = Halfedge()
         h_right_in = Halfedge()
-        e_tr = Edge(h_top.edge.k, is_facet=False, is_boundary=True, target_angle=0)
+        e_tr = Edge(h_top.edge.k, is_facet=False, is_boundary=True, is_stretchable=True, is_foldable=True, target_angle=0)
         h_tr_out = Halfedge()
         h_tr_in = Halfedge()
         
-        e_lt = Edge(h_top.edge.k, is_facet=False, is_boundary=True, target_angle=0)
+        e_lt = Edge(h_top.edge.k, is_facet=False, is_boundary=True, is_stretchable=True, is_foldable=False, target_angle=0)
         h_lt_up = Halfedge()
         h_lt_down = Halfedge()
-        e_lb = Edge(h_top.edge.k, is_facet=False, is_boundary=True, target_angle=0)
+        e_lb = Edge(h_top.edge.k, is_facet=False, is_boundary=True, is_stretchable=True, is_foldable=False, target_angle=0)
         h_lb_up = Halfedge()
         h_lb_down = Halfedge()
-        e_rb = Edge(h_top.edge.k, is_facet=False, is_boundary=True, target_angle=0)
+        e_rb = Edge(h_top.edge.k, is_facet=False, is_boundary=True, is_stretchable=True, is_foldable=False, target_angle=0)
         h_rb_up = Halfedge()
         h_rb_down = Halfedge()
-        e_rt = Edge(h_top.edge.k, is_facet=False, is_boundary=True, target_angle=0)
+        e_rt = Edge(h_top.edge.k, is_facet=False, is_boundary=True, is_stretchable=True, is_foldable=False, target_angle=0)
         h_rt_up = Halfedge()
         h_rt_down = Halfedge()
         
-
         # # halfedge assignment       <editor-fold>
         # h_top.face, f_top.halfedge = f_top, h_top
         # h_top.next = h_lt_in
@@ -409,13 +424,17 @@ class Face:
         Face.all.append(self)
 
         self.halfedge = None
+        
         self.halfedges = [None, None, None]
         self.nodes = []
+        
+        self.rigid = False
         
     def remove(self):
         Face.all.remove(self)
         
     def update(self):
+        # update self.halfedges and self.nodes
         h_0 = self.halfedge
         self.halfedges = [h_0]
         self.nodes = [h_0.node]
@@ -475,7 +494,8 @@ class Face:
         
         for i in range(len(self.halfedges)):
             e_old = self.halfedges[i].edge    # edgebefore offsetting
-            edge = Edge(e_old.k, e_old.is_facet, e_old.is_boundary, e_old.target_angle)
+            edge = Edge(k=e_old.k, is_facet=e_old.is_facet, is_boundary=e_old.is_boundary, is_stretchable=e_old.is_stretchable, is_foldable=e_old.is_foldable,
+                        target_angle=e_old.target_angle, is_offset=True)
             
             h = halfedges_in_new[i]
             h_twin = halfedges_out_new[i]
@@ -494,6 +514,55 @@ class Face:
             h_twin.next = halfedges_out_new[i_prev]
             h_twin.prev = halfedges_out_new[i_next]
         face_new.update()
+        
+    def triangulate_with_facet_edge(self):
+        # triangulate the face with facet edge
+        self.update()
+        
+        if len(self.halfedges) == 4:
+            def connect_two_nodes(i_0, i_1):
+                n_0 = self.halfedges[i_0].node
+                n_1 = self.halfedges[i_1].node
+                
+                e = Edge(0, is_facet=True, is_boundary=False, is_stretchable=False, is_foldable=False, target_angle=0)
+                h_0 = Halfedge()
+                h_1 = Halfedge()
+                f_1 = Face()
+                
+                h_0.edge = e
+                e.halfedge = h_0
+                h_0.node = n_1
+                h_0.next = self.halfedges[i_0]
+                h_0.prev = self.halfedges[i_0].next
+                h_0.prev.next = h_0
+                h_0.twin = h_1
+                h_0.face = self
+                self.halfedge = h_0
+                
+                h_1.edge = e
+                h_1.node = n_0
+                h_1.face = f_1
+                f_1.halfedge = h_1
+                h_1.next = self.halfedges[i_1]
+                h_1.prev = self.halfedges[i_1].next
+                h_1.prev.next = h_1
+                h_1.twin = h_0
+                
+                self.update()
+                f_1.update()
+                f_1.rigid = self.rigid = True
+                
+            l_0 = np.linalg.norm(self.nodes[0].p - self.nodes[2].p)
+            l_1 = np.linalg.norm(self.nodes[1].p - self.nodes[3].p)
+            
+            if l_0 < l_1:
+                connect_two_nodes(0, 2)
+            else:
+                connect_two_nodes(1, 3)
+            
+            return True
+        
+        return False
         
 class Halfedge:
     all = []
@@ -561,7 +630,7 @@ def build_halfedge_mesh(pattern_dir):
         is_facet = is_facet_edges[i_edge]
         is_boundary = is_boundary_edges[i_edge]
         target_angle = target_angles[i_edge]
-        e = Edge(k, is_facet, is_boundary, target_angle)
+        e = Edge(k, is_facet, is_boundary, target_angle=target_angle, is_stretchable=False, is_foldable=None)
         
         n_0 = Node.all[edges_in[i_edge][0]]
         n_1 = Node.all[edges_in[i_edge][1]]
@@ -624,8 +693,37 @@ def build_halfedge_mesh(pattern_dir):
                 h_1.next = h
                 h.prev = h_1
 
+def save_for_fabrication():
+    v = []
+    for n in Node.all:
+        p = n.p.tolist()
+        v.append(p)
+        
+    f = []
+    f_soft = []
+    for face in Face.all:
+        
+        ids = []
+        for n in face.nodes:
+            ids.append(n.id)
+        f_soft.append(ids)
+        
+        if face.rigid:
+            f.append(ids)
+    
+    data = {'rigid':
+                {'v': v, 'f': f},
+            'soft':
+                {'v': v, 'f': f_soft},
+            }
+    
+    string = json.dumps(data)
+    with open('./data/fabrication.json', 'w') as ofile:
+        ofile.write(string)
+    
 def show():
     lines = []
+    colors = []
     for e in Edge.all:
         p_0 = e.halfedge.node.p[:2]
         try:
@@ -634,6 +732,13 @@ def show():
             pdb.set_trace()
         seg = np.array([p_0, p_1])
         lines.append(seg)
+        
+        # if e.is_facet:
+        #     colors.append('red')
+        # elif e.is_foldable:
+        #     colors.append
+    
+    
     lc = LineCollection(lines, linewidths=1)
     
     fig, ax = plt.subplots(figsize=(15,15))
@@ -670,6 +775,9 @@ def show():
                 Focus.at(Focus.focus.twin)
             if event.key == 'e':
                 Focus.at(Focus.focus.edge)
+                print('is_foldable: ', Focus.focus.is_foldable)
+                print('is_facet: ', Focus.focus.is_facet)
+                print('is_stretchable: ', Focus.focus.is_stretchable)
             if event.key == 'v':
                 Focus.at(Focus.focus.node)
             if event.key == 'f':
@@ -686,6 +794,9 @@ def show():
             
             if Focus.type is Edge and event.key == 'f':     # fold
                 Focus.focus.create_compliant_hinge()
+            
+            if Focus.type is Face and event.key == 't':     # triangulate
+                Focus.focus.triangulate_with_facet_edge()
                 
             if event.key == 'h':
                 Focus.at(Focus.focus.halfedge)
@@ -695,7 +806,7 @@ def show():
         if event.key == 'q':
             return False
         show()
-
+        
     fig.canvas.mpl_connect('key_press_event', press)
     
     plt.draw()
@@ -713,15 +824,36 @@ if __name__ == '__main__':
     for e in Edge.all:
         if e.is_facet:
             e.collapse()
-
+    
+    # record old mesh ids
+    num_nodes_old = len(Node.all)
+    num_edges_old = len(Edge.all)
+    num_faces_old = len(Face.all)
+    num_halfedges_old = len(Halfedge.all)
+    
     for f in Face.all[:]:
         f.offset()
+        
+    for i_e, e in enumerate(Edge.all[:]):
+        if e.is_foldable and not e.is_offset:
+            e.create_compliant_hinge()
+            
+    # remove old mesh
+    Node.all = Node.all[num_nodes_old:]
+    Edge.all = Edge.all[num_edges_old:]
+    Face.all = Face.all[num_faces_old:]
+    Halfedge.all = Halfedge.all[num_halfedges_old:]
+    reindex(Node)
+    reindex(Face)
+    reindex(Edge)
+    reindex(Halfedge)
     
-    # for i_e, e in enumerate(Edge.all[:]):
-    #     print(i_e)
-    #     if e.is_foldable:
-    #         e.create_compliant_hinge()
+    # triangulate quad faces
+    for f in Face.all[:]:
+        f.triangulate_with_facet_edge()
     
-    # Focus.at(Halfedge.all[0])
+    Focus.at(Halfedge.all[0])
     
     show()
+    save_for_fabrication()
+

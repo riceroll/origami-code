@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 import scipy.optimize
+import json
 
 n_col = 10
 n_row = 10
@@ -9,7 +10,7 @@ l = 1
 w = 1
 a = 30 / 180 * np.pi
 target_angle = np.pi
-name = 'miura0'
+name = 'miura'
 distort = False
 kawazaki = False
 
@@ -58,16 +59,45 @@ def generate_Miura(n_col=n_col, n_row=n_row, l=l, w=w, a=a):
             
             # distortion
             if distort:
-                if dist > 4:
-                    delta = 0
-                elif dist > 2:
-                    delta = -(dist - 1) + 2
-                else:
-                    delta = dist
-                displacement = dir * delta * 0.5
-                x += displacement[0]
-                y += displacement[1]
-            
+                
+                # contract
+                if False:
+                    if dist > 4:
+                        delta = 0
+                    elif dist > 2:
+                        delta = -(dist - 1) + 2
+                    else:
+                        delta = dist
+                    displacement = dir * delta * 0.5
+                    x += displacement[0]
+                    y += displacement[1]
+                
+                # car / motorcycle
+                if True:
+                    # name = 'car'
+                    name = 'motorcycle'
+                    with open('./data/outline/{}.json'.format(name)) as ifile:
+                        content = ifile.read()
+                        points = json.loads(content)
+                        points = np.array(points)[:, :2]
+                        
+                    node = np.array([[x, y]])
+                    
+                    distances = np.sqrt(np.sum((points - node) ** 2, axis=1))
+                    i_closest = np.argmin(distances)
+                    point_closest = points[i_closest]
+                    distance_closest = np.min(distances)
+                    
+                    distance_closest *= 4
+                    t = 1 / (distance_closest) ** 2
+                    t = t**0.25
+                    t = np.e ** (-t)
+                    # t *= 1e50
+                    print(t)
+                    # t = 0
+                    node = (point_closest - node) * (1 - t) + node
+                    x, y = node
+                    
             nodes[i_v] = [x, y]
             
             if i_col != 0 and i_col != n_col and i_row != 0 and i_row != n_row:
@@ -110,7 +140,7 @@ def generate_Miura(n_col=n_col, n_row=n_row, l=l, w=w, a=a):
     nodes_prev = nodes.copy()
     if kawazaki:
         print(energy(nodes))
-        res = scipy.optimize.minimize(energy, nodes, method='CG', tol=1e-4)
+        res = scipy.optimize.minimize(energy, nodes, method='CG', tol=1e-2)
         nodes = res.x
         nodes = nodes.reshape(-1, 2)
         print(energy(nodes))

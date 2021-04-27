@@ -4,11 +4,11 @@ default:
     paused: false
     n_sub_steps: 20
     t0_folding: 1000
-    T_folding: 8000
+    T_folding: 14000
     p_fold: 0.6
     pinned: false
 
-    AUTO_FORCING: true
+    AUTO_FORCING: false
     FORCE_GAP_SCALE: 30
 
     SHOW_FORCE: false
@@ -23,9 +23,27 @@ default:
     damping: 0.1
     h: 0.001
 
+miura0:
+  Setting:
+    p_fold: 0
+    n_sub_steps: 2
+
 triangle:
   Setting:
     t0_folding: 1500
+    n_sub_steps: 2
+
+pasta:
+  Setting:
+    STIFFNESS_CHANGE: false
+    AUTO_FORCING: false
+    n_sub_steps: 50
+    p_fold: 0.1
+  Param:
+    k_fold: 10
+#    k_facet: 30
+    h: 0.01
+  Comment:  "simulating slow, not sure which parameter goes wrong, should check previous gits"
 
 pasta_modified:
   Setting:
@@ -34,6 +52,10 @@ pasta_modified:
     p_fold: 0.1
   Param:
     h: 0.01
+
+miura:
+  Setting:
+    AUTO_FORCING: true
 
 
 

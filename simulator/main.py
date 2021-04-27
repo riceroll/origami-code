@@ -93,7 +93,7 @@ class Config:
 
 setting = Setting()
 param = Parameter()
-config = Config(param, setting, pattern)
+config = Config(param, setting, pattern, "default")
 config.load_config('default')
 config.load_config(configuration)
 # setting.__init__()
@@ -119,14 +119,15 @@ forced = False
 
 # force
 # force = spiral_force.SpiralForce()
-# force = circle_force.CircleForce()
-force = line_force.LineForce()
+force = circle_force.CircleForce()
+# force = line_force.LineForce()
 force.gap *= setting.FORCE_GAP_SCALE
 
 # recordings
 traj = []       # trajectory of the handle
 forces = []     # forces on the trajectory
 f_traj = []     # visualize the force on the fly
+frames = []
 
 # loading
 with open(config.pattern_dir) as f:
@@ -273,7 +274,7 @@ def step():
     f_hinge_l = -k_crease * (rho - rho_target * p_fold).reshape(-1, 1) * par_rho_xl
     f_hinge_i = -k_crease * (rho - rho_target * p_fold).reshape(-1, 1) * par_rho_xi
     f_hinge_j = -k_crease * (rho - rho_target * p_fold).reshape(-1, 1) * par_rho_xj
-
+    
     f.index_add_(0, nx_i, f_hinge_i)
     f.index_add_(0, nx_j, f_hinge_j)
     f.index_add_(0, nx_k, f_hinge_k)
@@ -414,6 +415,16 @@ def timerCallback(vis):
         if num_steps >= t_stop and forcing:
             forcing = False
             print('stop forcing')
+    
+    vs = x.numpy().tolist()
+    fs = faces.numpy().tolist()
+    es = edges.numpy().tolist()
+    frame = {
+        'v': vs,
+        'e': es,
+        'f': fs
+    }
+    frames.append(frame)
     
     for i in range(setting.n_sub_steps):
         step()
@@ -598,5 +609,11 @@ def visualize():
     plt.show()
     
 visualize()
+
+def save_video(name='car'):
+    for i, frame in enumerate(frames):
+        with open('./video/{}/frame_{}.json'.format(name, str(i)), 'w') as ofile:
+            data = json.dumps(frame)
+            ofile.write(data)
 
 # </editor-fold>
