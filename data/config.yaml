@@ -50,13 +50,38 @@ pasta_modified:
     STIFFNESS_CHANGE: false
     AUTO_FORCING: false
     p_fold: 0.1
+    n_sub_steps: 100
   Param:
-    h: 0.01
+    h: 0.1
+
+double_helix:
+  Setting:
+    STIFFNESS_CHANGE: false
+    AUTO_FORCING: false
+    p_fold: 0.4
+    n_sub_steps: 100
+  Param:
+    h: 0.1
+    k_fold: 10
+    k_facet: 100
+    k_face: 20000
+
+
+rose:
+  Setting:
+    STIFFNESS_CHANGE: false
+    AUTO_FORCING: false
+    p_fold: 0.1
+    n_sub_steps: 100
+  Param:
+    h: 0.032
+    k_fold: 10
+    k_facet: 100
+    k_face: 20000
 
 miura:
   Setting:
     AUTO_FORCING: true
-
 
 
 

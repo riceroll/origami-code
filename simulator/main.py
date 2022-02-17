@@ -50,7 +50,7 @@ class Parameter:
         self.k_facet = 10
         self.k_face = 20000
         self.damping = 0.1
-        self.h = 0.001
+        self.h = 1
 
 class Config:
     pattern_folder = 'data/pattern/'
@@ -290,8 +290,8 @@ def step():
     
     v.add_(a * param.h)
     v.mul_(1 - param.damping)
-
-    x.add_(v)
+    
+    x.add_(v * param.h)
     
     if pinned:
         x.add_(is_boundary_nodes.reshape(-1, 1) * v * -1)
@@ -391,7 +391,7 @@ def draw():
 # ============================================================= <editor-fold>
 
 def timerCallback(vis):
-    global forcing, forced, f_traj, pinned
+    global forcing, forced, f_traj, pinned, rho_target
     
     if setting.AUTO_FORCING:
         t_stop = setting.t0_folding + setting.T_folding
@@ -428,6 +428,10 @@ def timerCallback(vis):
     
     for i in range(setting.n_sub_steps):
         step()
+        
+    # pasta modification
+    # if num_steps > 7000:
+    #     rho_target *= 0.99
     draw()
     
 vis.register_animation_callback(timerCallback)
